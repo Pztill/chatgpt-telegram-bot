@@ -1,0 +1,103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Main table for storing ChatGPT conversation threads
+model ChatThread {
+  id          String   @id @default(cuid())
+  title       String   // Title/name of the ChatGPT thread
+  content     String   // Full conversation content
+  source      String   @default("chatgpt") // Source type
+  isActive    Boolean  @default(true) // Whether this personality is active
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  personalityTraits PersonalityTrait[]
+  extractedInfo     ExtractedInfo[]
+  
+  @@map("chat_threads")
+}
+
+// Personality traits extracted from ChatGPT threads
+model PersonalityTrait {
+  id          String   @id @default(cuid())
+  trait       String   // e.g., "humorous", "witty", "helpful"
+  description String   // Detailed description of the trait
+  strength    Float    @default(0.5) // How strong this trait is (0.0-1.0)
+  examples    String[] // Example phrases/responses showing this trait
+  threadId    String
+  
+  // Relationships
+  thread      ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  
+  @@map("personality_traits")
+}
+
+// Information extracted from threads for retrieval
+model ExtractedInfo {
+  id          String   @id @default(cuid())
+  topic       String   // Main topic/subject
+  content     String   // The actual information content
+  keywords    String[] // Searchable keywords
+  context     String?  // Additional context
+  threadId    String
+  
+  // Relationships
+  thread      ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  
+  @@map("extracted_info")
+}
+
+// Store all Telegram chat messages and bot responses
+model ChatMessage {
+  id          String   @id @default(cuid())
+  telegramId  String   // User's Telegram ID
+  username    String?  // User's Telegram username
+  firstName   String?  // User's first name
+  lastName    String?  // User's last name
+  message     String   // User's message
+  response    String?  // Bot's response
+  personality String?  // Which personality was used
+  command     String?  // If it was a command (/start, /help, etc.)
+  createdAt   DateTime @default(now())
+  
+  // Index for faster queries
+  @@index([telegramId])
+  @@index([createdAt])
+  @@map("chat_messages")
+}
+
+// Store bot configuration and settings
+model BotConfig {
+  id                String   @id @default(cuid())
+  key               String   @unique // Configuration key
+  value             String   // Configuration value
+  description       String?  // What this config does
+  updatedAt         DateTime @updatedAt
+  
+  @@map("bot_config")
+}
+
+// Store user preferences and settings
+model UserPreferences {
+  id              String   @id @default(cuid())
+  telegramId      String   @unique
+  preferredStyle  String?  // Preferred personality style
+  language        String   @default("en")
+  notifications   Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("user_preferences")
+}
